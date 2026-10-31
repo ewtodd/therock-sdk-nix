@@ -47,24 +47,26 @@ runCommand "rocm-sdk-cc-${rocmSdk.version}"
       inherit rocmSdk;
     };
   }
+  # The heredoc terminators must sit at column 0: bash matches them exactly, and an indented
+  # ` WRAP` never closes the heredoc, silently swallowing the rest of the script as file content.
   ''
-     mkdir -p $out/bin $out/llvm
-     # Real directories, symlinked files: consumers walk `..` from
-     # llvm/lib/cmake/llvm back up to this tree (CLR's PCH step does), and a
-     # symlinked lib/ would send them into the SDK and past the wrappers.
-     lndir -silent ${rocmSdk}/lib/llvm $out/llvm
-     rm "$out/llvm/bin/clang" "$out/llvm/bin/clang++"
+        mkdir -p $out/bin $out/llvm
+        # Real directories, symlinked files: consumers walk `..` from
+        # llvm/lib/cmake/llvm back up to this tree (CLR's PCH step does), and a
+        # symlinked lib/ would send them into the SDK and past the wrappers.
+        lndir -silent ${rocmSdk}/lib/llvm $out/llvm
+        rm "$out/llvm/bin/clang" "$out/llvm/bin/clang++"
 
-     cat > $out/llvm/bin/clang <<'WRAP'
-     ${clangWrapper}
-     WRAP
-     cp $out/llvm/bin/clang $out/llvm/bin/clang++
-     cat > $out/bin/hipcc <<WRAP
-     #!${runtimeShell}
-     export HIP_CLANG_PATH=$out/llvm/bin
-    exec ${rocmSdk}/bin/hipcc "\$@"
-     WRAP
-     chmod +x $out/llvm/bin/clang $out/llvm/bin/clang++ $out/bin/hipcc
-     ln -s $out/llvm/bin/clang $out/bin/clang
-     ln -s $out/llvm/bin/clang++ $out/bin/clang++
+        cat > $out/llvm/bin/clang <<'WRAP'
+    ${clangWrapper}
+    WRAP
+        cp $out/llvm/bin/clang $out/llvm/bin/clang++
+        cat > $out/bin/hipcc <<WRAP
+    #!${runtimeShell}
+    export HIP_CLANG_PATH=$out/llvm/bin
+    exec ${rocmSdk}/bin/hipcc "$@"
+    WRAP
+        chmod +x $out/llvm/bin/clang $out/llvm/bin/clang++ $out/bin/hipcc
+        ln -s $out/llvm/bin/clang $out/bin/clang
+        ln -s $out/llvm/bin/clang++ $out/bin/clang++
   ''
